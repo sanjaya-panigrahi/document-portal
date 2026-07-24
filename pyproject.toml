@@ -1,7 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "document-portal"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "langchain",
+    "python-dotenv",
+    "ipykernel",
+    "langchain-groq",
+    "langchain-openai",
+    "langchain-google-genai",
+    "langchain-community",
+    "pyPdf",
+    "faiss-cpu",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
