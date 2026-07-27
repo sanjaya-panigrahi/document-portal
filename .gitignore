@@ -5,3 +5,6 @@ env
 .vscode
 *.lock
 .DS_Store
+logs/
+*.pyc
+test.py

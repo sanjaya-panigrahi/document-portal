@@ -18,6 +18,8 @@ dependencies = [
     "langchain-community",
     "pyPdf",
     "faiss-cpu",
+    "structlog",
+    "PyMuPDF",
 ]
 
 [tool.setuptools.packages.find]
