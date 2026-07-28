@@ -1,0 +1,22 @@
+faiss_db:
+  collection_name: "document_portal"
+
+embeddings_model:
+  provider: "google"
+  model_name: "models/text-embedding-004"
+
+retriever:
+  top_k: 10
+
+llm:
+  groq:
+    provider: "groq"
+    model_name: "groq/compound-mini"
+    temperature: 0
+    max_tokens: 2048
+
+  google:
+    provider: "google"
+    model_name: "gemini-3.6-flash"
+    temperature: 0
+    max_tokens: 2048
