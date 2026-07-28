@@ -8,3 +8,4 @@ env
 logs/
 *.pyc
 test.py
+data/

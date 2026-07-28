@@ -3,7 +3,7 @@ faiss_db:
 
 embeddings_model:
   provider: "google"
-  model_name: "models/text-embedding-004"
+  model_name: "gemini-embedding-001"
 
 retriever:
   top_k: 10

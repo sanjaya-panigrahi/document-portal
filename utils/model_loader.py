@@ -97,6 +97,8 @@ if __name__ == "__main__":
         
         embeddings = model_loader.load_embeddings()
         log.info("Embeddings model loaded successfully", embeddings_model=embeddings)
+        embeddings_result = embeddings.embed_query("Hello, how are you?")
+        log.info("Embeddings invocation result", result=embeddings_result)
         
         llm = model_loader.load_llm()
         log.info("LLM model loaded successfully", llm_model=llm)
