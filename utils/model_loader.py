@@ -57,7 +57,7 @@ class ModelLoader:
     def load_llm(self):
         """Load and return LLM model"""
         llm_block = self.config["llm"]
-        provider_key = os.getenv("LLM_PROVIDER", "groq")
+        provider_key = os.getenv("LLM_PROVIDER", "google")
         
         if provider_key not in llm_block:
             log.error("LLM provider not found in config", provider_key=provider_key)
@@ -88,25 +88,6 @@ class ModelLoader:
         else:   
             log.error("Unsupported LLM provider", provider=provider)
             raise ValueError(f"Unsupported LLM provider: {provider}")
-        
-    
-if __name__ == "__main__":
-    try:
-        model_loader = ModelLoader()
-        log.info("ModelLoader initialized successfully")
-        
-        embeddings = model_loader.load_embeddings()
-        log.info("Embeddings model loaded successfully", embeddings_model=embeddings)
-        embeddings_result = embeddings.embed_query("Hello, how are you?")
-        log.info("Embeddings invocation result", result=embeddings_result)
-        
-        llm = model_loader.load_llm()
-        log.info("LLM model loaded successfully", llm_model=llm)
-        
-        result = llm.invoke("Hello, how are you?")
-        log.info("LLM invocation result", result=result)
-    except DocumentPortalException as e:
-        log.error("Failed to initialize ModelLoader", error=str(e))
-    
+
     
     

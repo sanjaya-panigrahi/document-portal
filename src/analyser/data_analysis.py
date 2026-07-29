@@ -12,7 +12,7 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocumentPortalException
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_classic.output_parsers import OutputFixingParser
-from prompt.prompt_library import *
+from prompt.prompt_library import PROMPT_REGISTRY
 
 
 class DocumentAnalyser:
@@ -28,7 +28,7 @@ class DocumentAnalyser:
             self.parser = JsonOutputParser(pydantic_object= Metadata)
             self.fixing_parser = OutputFixingParser.from_llm(llm=self.llm, parser=self.parser)
             
-            self.prompt = prompt
+            self.prompt = PROMPT_REGISTRY["document_analysis"]
             self.logger.info("DocumentAnalyser initialized successfully")
             
         except Exception as e:
