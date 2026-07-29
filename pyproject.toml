@@ -21,7 +21,7 @@ dependencies = [
     "structlog",
     "PyMuPDF",
     "PyYAML",
-    "pandas",
+    "Pandas",
 ]
 
 [tool.setuptools.packages.find]
