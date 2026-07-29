@@ -1,25 +1,25 @@
-from pydantic import BaseModel, RootModel, Field
-from typing import Optional, List, Dict, Any, Union
+from pydantic import BaseModel, RootModel
+from typing import List, Union
+from enum import Enum
 
 class Metadata(BaseModel):
-    """Pydantic model for metadata extracted from documents."""
-    Summary: List[str] = Field(default_factory=list, description="A list of summary points extracted from the document.")
+    Summary: List[str]
     Title: str
-    Author: str
+    Author: List[str]
     DateCreated: str
     LastModifiedDate: str
     Publisher: str
     Language: str
+    PageCount: Union[int, str]  # Can be "Not Available"
     SentimentTone: str
-    PageCount: Union[int,str]
-    
-
 class ChangeFormat(BaseModel):
-    """Pydantic model for format change instructions."""
     Page: str
     Changes: str
-    
 
 class SummaryResponse(RootModel[list[ChangeFormat]]):
-    """Pydantic model for the response containing format change instructions."""
     pass
+class PromptType(str, Enum):
+    DOCUMENT_ANALYSIS = "document_analysis"
+    DOCUMENT_COMPARISON = "document_comparison"
+    CONTEXTUALIZE_QUESTION = "contextualize_question"
+    CONTEXT_QA = "context_qa"
