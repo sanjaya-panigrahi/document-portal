@@ -22,6 +22,9 @@ dependencies = [
     "PyMuPDF",
     "PyYAML",
     "Pandas",
+    "streamlit",
+    "pytest",
+    "langchain-core[tracing]",
 ]
 
 [tool.setuptools.packages.find]
