@@ -6,9 +6,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import uuid
 from typing import Iterable, List
-from logger.custom_logger import CustomLogger
-from exception.custom_exception import DocumentPortalException
-log = CustomLogger().get_logger(__name__)
+from logger import GLOBAL_LOGGER as log
+import sys
+from exception.custom_exception import DocumentIntelligenceError
+
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
 # ----------------------------- #
@@ -44,4 +45,4 @@ def save_uploaded_files(uploaded_files: Iterable, target_dir: Path) -> List[Path
         return saved
     except Exception as e:
         log.error("Failed to save uploaded files", error=str(e), dir=str(target_dir))
-        raise DocumentPortalException("Failed to save uploaded files", e) from e
+        raise DocumentIntelligenceError("Failed to save uploaded files", sys) from e

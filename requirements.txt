@@ -1,0 +1,25 @@
+langchain
+langchain-community
+langchain-core
+langchain-classic
+
+langchain-groq
+langchain-google-genai
+langchain-openai
+langchain-anthropic
+
+faiss-cpu
+fastapi
+uvicorn
+python-dotenv
+python-multipart
+PyMuPDF
+structlog
+docx2txt
+ipykernel
+streamlit
+pytest
+pypdf
+cfn-lint
+socksio
+-e .
