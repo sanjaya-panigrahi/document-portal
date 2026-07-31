@@ -156,6 +156,16 @@ from src.document_ingestion.data_ingestion import ChatIngestor
 from src.document_chat.retrieval import ConversationalRAG
 
 def test_document_ingestion_and_rag():
+    """
+    Integration test for multi-document ingestion and conversational RAG.
+
+    What it does:
+        1. Loads a set of local test files (PDF, DOCX, TXT).
+        2. Ingests them into a FAISS vector index via ChatIngestor.
+        3. Asks a question and prints the RAG-generated answer.
+
+    Run with:  python3 test.py
+    """
     try:
         test_files = [
             "/Users/sanjaya-panigrahi/Downloads/Docs to Analyse/market_analysis_report.docx",

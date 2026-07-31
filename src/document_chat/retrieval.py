@@ -17,15 +17,31 @@ from model.models import PromptType
 
 class ConversationalRAG:
     """
-    LCEL-based Conversational RAG with lazy retriever initialization.
+    Conversational Retrieval-Augmented Generation (RAG) pipeline.
 
-    Usage:
-        rag = ConversationalRAG(session_id="abc")
-        rag.load_retriever_from_faiss(index_path="faiss_index/abc", k=5, index_name="index")
-        answer = rag.invoke("What is ...?", chat_history=[])
+    What it does:
+        1. Loads the selected LLM.
+        2. Loads a FAISS vector index from disk.
+        3. On each user query it:
+           a. Rewrites the question to be standalone (removing dependency on chat history).
+           b. Retrieves the top-k most relevant document chunks from FAISS.
+           c. Passes those chunks + the question to the LLM to generate an answer.
+
+    Two-step usage:
+        rag = ConversationalRAG(session_id="abc", model_key="google")
+        rag.load_retriever_from_faiss("faiss_index/abc", k=5)
+        answer = rag.invoke("What is the main topic?", chat_history=[])
     """
 
     def __init__(self, session_id: Optional[str], model_key: Optional[str] = None, retriever=None):
+        """
+        Initialises the RAG pipeline.
+
+        Args:
+            session_id:  Unique ID for this chat session. Used to locate the correct FAISS index folder.
+            model_key:   Which LLM to use (e.g. "google", "openai"). Defaults to LLM_PROVIDER env var.
+            retriever:   Optionally pass a pre-built retriever to skip load_retriever_from_faiss().
+        """
         try:
             self.session_id = session_id
             self.model_key = model_key
@@ -61,7 +77,15 @@ class ConversationalRAG:
         search_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Load FAISS vectorstore from disk and build retriever + LCEL chain.
+        Loads a FAISS vector store from disk and wires up the LCEL retrieval chain.
+        Must be called before invoke() if no retriever was passed to __init__.
+
+        Args:
+            index_path:    Path to the FAISS index folder (e.g. "faiss_index/session123").
+            k:             Number of top similar chunks to retrieve per query (default 5).
+            index_name:    Name used when saving the index with FAISS.save_local() (default "index").
+            search_type:   FAISS search strategy — "similarity" or "mmr" (default "similarity").
+            search_kwargs: Extra kwargs passed to as_retriever(), e.g. {"fetch_k": 20} for MMR.
         """
         try:
             if not os.path.isdir(index_path):
@@ -97,7 +121,17 @@ class ConversationalRAG:
             raise DocumentIntelligenceError("Loading error in ConversationalRAG", sys)
 
     def invoke(self, user_input: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
-        """Invoke the LCEL pipeline."""
+        """
+        Runs the full RAG pipeline for a single user question.
+
+        Args:
+            user_input:   The question the user typed.
+            chat_history: Previous messages in this conversation (LangChain BaseMessage list).
+                          Pass an empty list [] for the first turn.
+
+        Returns:
+            The LLM’s answer as a plain string.
+        """
         try:
             if self.chain is None:
                 raise DocumentIntelligenceError(
@@ -125,6 +159,7 @@ class ConversationalRAG:
     # ---------- Internals ----------
 
     def _load_llm(self):
+        """Internal: loads the LLM using ModelLoader with the stored model_key."""
         try:
             llm = ModelLoader().load_llm(model_key=self.model_key)
             if not llm:
@@ -137,9 +172,16 @@ class ConversationalRAG:
 
     @staticmethod
     def _format_docs(docs) -> str:
+        """Internal: joins retrieved document chunks into a single context string for the prompt."""
         return "\n\n".join(getattr(d, "page_content", str(d)) for d in docs)
 
     def _build_lcel_chain(self):
+        """
+        Internal: assembles the three-stage LCEL chain.
+          Stage 1 — Rewrite the question to remove dependency on chat history.
+          Stage 2 — Retrieve matching document chunks from FAISS.
+          Stage 3 — Answer using the retrieved context + original question.
+        """
         try:
             if self.retriever is None:
                 raise DocumentIntelligenceError("No retriever set before building chain", sys)

@@ -2,6 +2,10 @@ from setuptools import setup, find_packages
 from pathlib import Path
 
 def parse_requirements(filename):
+    """
+    Reads a requirements.txt file and returns a list of package specifiers.
+    Skips blank lines, comments (#), and editable installs (-e).
+    """
     with open(filename, encoding="utf-8") as f:
         return [
             line.strip()

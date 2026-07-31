@@ -7,6 +7,10 @@ from api.main import app   # or your FastAPI entrypoint
 client = TestClient(app)
 
 def test_home():
+    """
+    Checks that the root endpoint (GET /) returns HTTP 200
+    and renders the expected page title in the HTML response.
+    """
     response = client.get("/")
     assert response.status_code == 200
     assert "Document Intelligence Workspace" in response.text

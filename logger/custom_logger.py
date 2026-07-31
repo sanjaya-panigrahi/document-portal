@@ -4,8 +4,25 @@ from datetime import datetime
 import structlog
 
 class CustomLogger:
+    """
+    Sets up structured JSON logging using structlog.
+
+    What it does:
+        - Creates a timestamped .log file in the /logs directory on each run.
+        - Outputs JSON-formatted log lines to both the console and the log file.
+        - Every log entry includes: timestamp (ISO UTC), level, event, and any extra fields.
+
+    Usage:
+        logger = CustomLogger().get_logger("my_module")
+        logger.info("File processed", filename="report.pdf", pages=12)
+    """
     def __init__(self, log_dir="logs"):
-        # Ensure logs directory exists
+        """
+        Creates the logs directory and sets up the timestamped log file path.
+
+        Args:
+            log_dir: Directory to store log files (default "logs" in CWD).
+        """
         self.logs_dir = os.path.join(os.getcwd(), log_dir)
         os.makedirs(self.logs_dir, exist_ok=True)
 
@@ -14,6 +31,16 @@ class CustomLogger:
         self.log_file_path = os.path.join(self.logs_dir, log_file)
 
     def get_logger(self, name=__file__):
+        """
+        Builds and returns a structlog logger instance.
+
+        Args:
+            name: Module name used to identify the logger (shown in log output).
+                  Pass __file__ or a descriptive string.
+
+        Returns:
+            A structlog bound logger ready to call .info(), .error(), .warning() etc.
+        """
         logger_name = os.path.basename(name)
 
         # Configure logging for console + file (both JSON)

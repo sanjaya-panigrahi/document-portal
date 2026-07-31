@@ -2,13 +2,35 @@ from pathlib import Path
 import os
 import yaml
 
+# ---------------------------------------------------------------------------
+# Config loader — reads config/config.yaml into a plain Python dict.
+# The path is resolved from the project root so it works regardless of
+# which directory the process is started from.
+# ---------------------------------------------------------------------------
+
+
 def _project_root() -> Path:
+    """Returns the absolute path to the project root (two levels above this file)."""
     return Path(__file__).resolve().parents[1]
+
 
 def load_config(config_path: str | None = None) -> dict:
     """
-    Resolve config path reliably irrespective of CWD.
-    Priority: explicit arg > CONFIG_PATH env > <project_root>/config/config.yaml
+    Loads and returns config/config.yaml as a Python dict.
+
+    Resolution order for the config file path:
+      1. Explicit argument (config_path).
+      2. CONFIG_PATH environment variable.
+      3. Default: <project_root>/config/config.yaml.
+
+    Args:
+        config_path: Optional override path to a YAML config file.
+
+    Returns:
+        Dict containing all config values (llm, embedding_model, faiss_db, etc.).
+
+    Raises:
+        FileNotFoundError: If the resolved config file does not exist.
     """
     env_path = os.getenv("CONFIG_PATH")
     if config_path is None:

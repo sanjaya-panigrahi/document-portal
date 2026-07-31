@@ -10,17 +10,37 @@ from logger import GLOBAL_LOGGER as log
 import sys
 from exception.custom_exception import DocumentIntelligenceError
 
+# ---------------------------------------------------------------------------
+# File I/O helpers shared by ingestion classes.
+# ---------------------------------------------------------------------------
+
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
-# ----------------------------- #
-# Helpers (file I/O + loading)  #
-# ----------------------------- #
+
 def generate_session_id(prefix: str = "session") -> str:
+    """
+    Generates a unique session ID using the current IST timestamp + a short UUID suffix.
+    Format: <prefix>_YYYYMMDD_HHMMSS_<8-char hex>
+
+    Args:
+        prefix: String prepended to the ID (default "session").
+    """
     ist = ZoneInfo("Asia/Kolkata")
     return f"{prefix}_{datetime.now(ist).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
 def save_uploaded_files(uploaded_files: Iterable, target_dir: Path) -> List[Path]:
-    """Save uploaded files (Streamlit-like) and return local paths."""
+    """
+    Saves uploaded file objects to the target directory on disk.
+    Accepts both Streamlit UploadedFile (.getbuffer()) and plain file handles (.read()).
+    Unsupported extensions (not in SUPPORTED_EXTENSIONS) are silently skipped with a warning.
+
+    Args:
+        uploaded_files: Iterable of file-like objects with a .name attribute.
+        target_dir:     Directory to save files into (created if it does not exist).
+
+    Returns:
+        List of Path objects pointing to the saved files.
+    """
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
         saved: List[Path] = []

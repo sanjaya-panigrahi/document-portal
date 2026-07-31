@@ -10,7 +10,22 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_anthropic import ChatAnthropic
 
+
+# ---------------------------------------------------------------------------
+# ApiKeyManager
+# ---------------------------------------------------------------------------
+
 class ApiKeyManager:
+    """
+    Loads and validates API keys required by the LLM and embedding providers.
+
+    Resolution order for each key:
+      1. JSON blob in the API_KEYS environment variable (used in AWS ECS / production).
+      2. Individual environment variables (GOOGLE_API_KEY, GROQ_API_KEY, etc.).
+      3. .env file loaded by python-dotenv (local development).
+
+    Keys are stored in memory only; never written to disk.
+    """
     REQUIRED_KEYS = ["GROQ_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
 
     def __init__(self):
@@ -43,18 +58,48 @@ class ApiKeyManager:
 
 
     def get(self, key: str) -> str:
+        """
+        Returns the value of a specific API key.
+
+        Args:
+            key: The environment variable name (e.g. "GOOGLE_API_KEY").
+
+        Raises:
+            KeyError: If the requested key was not found in any source.
+        """
         val = self.api_keys.get(key)
         if not val:
             raise KeyError(f"API key for {key} is missing")
         return val
 
 
+# ---------------------------------------------------------------------------
+# ModelLoader
+# ---------------------------------------------------------------------------
+
 class ModelLoader:
     """
-    Loads embedding models and LLMs based on config and environment.
+    Central factory for loading LLMs and embedding models.
+
+    What it does:
+        - Reads provider and model settings from config/config.yaml.
+        - Retrieves the matching API key from ApiKeyManager.
+        - Instantiates and returns the correct LangChain model object.
+
+    Supported LLM providers:  google, groq, openai, anthropic.
+    Supported embedding providers: google, openai.
+
+    Usage:
+        loader = ModelLoader()
+        llm = loader.load_llm(model_key="openai")
+        emb = loader.load_embeddings(embedding_key="openai")
     """
 
     def __init__(self):
+        """
+        Loads .env (in local mode), initialises ApiKeyManager, and reads config.yaml.
+        Set ENV=production in environment to skip .env loading.
+        """
         if os.getenv("ENV", "local").lower() != "production":
             load_dotenv()
             log.info("Running in LOCAL mode: .env loaded")
@@ -67,7 +112,13 @@ class ModelLoader:
 
     def list_available_embeddings(self):
         """
-        Return configured embedding model options from YAML.
+        Returns all configured embedding model options from config.yaml.
+        The UI calls this to populate the Embedding dropdown.
+
+        Returns:
+            Dict with keys:
+              "default"    — key of the default embedding model.
+              "embeddings" — list of { key, provider, model_name, label } dicts.
         """
         emb_block = self.config.get("embedding_model", {}) or {}
         options_block = emb_block.get("options", {})
@@ -85,7 +136,15 @@ class ModelLoader:
 
     def load_embeddings(self, embedding_key: str | None = None):
         """
-        Load and return the configured embedding model. Provider is driven by config.
+        Loads and returns the configured embedding model.
+
+        Args:
+            embedding_key: Key from config.yaml embedding_model.options
+                           (e.g. "openai", "google", "openai_large").
+                           Falls back to the default in config if not provided.
+
+        Returns:
+            A LangChain embeddings object (GoogleGenerativeAIEmbeddings or OpenAIEmbeddings).
         """
         try:
             emb_block = self.config["embedding_model"]
@@ -118,7 +177,11 @@ class ModelLoader:
 
     def list_available_llms(self):
         """
-        Return configured LLM options from YAML.
+        Returns all configured LLM options from config.yaml.
+        The UI calls this to populate the Model (LLM) dropdown.
+
+        Returns:
+            List of { key, provider, model_name, label } dicts — one per llm block entry.
         """
         llm_block = self.config.get("llm", {}) or {}
         options = []
@@ -137,7 +200,18 @@ class ModelLoader:
 
     def load_llm(self, model_key: str | None = None):
         """
-        Load and return the configured LLM model.
+        Loads and returns the configured LLM.
+
+        Args:
+            model_key: Key from config.yaml llm block (e.g. "google", "openai", "groq", "claude").
+                       Falls back to the LLM_PROVIDER environment variable, then "openai".
+
+        Returns:
+            A LangChain chat model object for the selected provider.
+
+        Raises:
+            ValueError:  If the provider key is not found in config.
+            ImportError: If the required provider package is not installed.
         """
         llm_block = self.config["llm"]
         provider_key = model_key or os.getenv("LLM_PROVIDER", "openai")

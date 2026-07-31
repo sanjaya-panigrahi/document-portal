@@ -1,6 +1,14 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
+# ---------------------------------------------------------------------------
+# Prompt Library
+# All LangChain prompt templates used in this application are defined here
+# and registered in PROMPT_REGISTRY so any module can look them up by name.
+# ---------------------------------------------------------------------------
+
 # Prompt for document analysis
+# Instructs the LLM to extract structured metadata (Title, Author, Summary, etc.)
+# and return it as valid JSON matching the Metadata schema.
 document_analysis_prompt = ChatPromptTemplate.from_template("""
 You are a highly capable assistant trained to analyze and summarize documents.
 Return ONLY valid JSON matching the exact schema below.
@@ -12,6 +20,8 @@ Analyze this document:
 """)
 
 # Prompt for document comparison
+# Instructs the LLM to compare two PDF documents page-by-page and list changes.
+# Input variables: {combined_docs}, {format_instruction}
 document_comparison_prompt = ChatPromptTemplate.from_template("""
 You will be provided with content from two PDFs. Your tasks are as follows:
 
@@ -30,6 +40,8 @@ Your response should follow this format:
 """)
 
 # Prompt for contextual question rewriting
+# Rewrites the latest user question to be self-contained (no reference to chat history).
+# Required by the RAG pipeline so the retriever gets a clean, standalone query.
 contextualize_question_prompt = ChatPromptTemplate.from_messages([
     ("system", (
         "Given a conversation history and the most recent user query, rewrite the query as a standalone question "
@@ -41,6 +53,8 @@ contextualize_question_prompt = ChatPromptTemplate.from_messages([
 ])
 
 # Prompt for answering based on context
+# Answers the user question strictly from the retrieved document context.
+# Responds with "I don't know" if the answer is not found in the context.
 context_qa_prompt = ChatPromptTemplate.from_messages([
     ("system", (
         "You are an assistant designed to answer questions using the provided context. Rely only on the retrieved "
@@ -51,7 +65,9 @@ context_qa_prompt = ChatPromptTemplate.from_messages([
     ("human", "{input}"),
 ])
 
-# Central dictionary to register prompts
+# Central registry — maps string keys to prompt templates.
+# Used by DocumentAnalyzer, DocumentComparatorLLM, and ConversationalRAG
+# via PROMPT_REGISTRY[PromptType.XXX.value].
 PROMPT_REGISTRY = {
     "document_analysis": document_analysis_prompt,
     "document_comparison": document_comparison_prompt,

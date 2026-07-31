@@ -1,4 +1,5 @@
 def main():
+    """Entry point placeholder for the document-intelligence-workspace package."""
     print("Hello from document-intelligence-workspace!")
 
 

@@ -1,5 +1,5 @@
 Document Intelligence Workspace - Analyze, compare, and converse with your documents.
-(Currently Suporting - PDF, TXT, DOCX)
+(Currently Supporting - PDF, TXT, DOCX)
 
 -   Structured PDF analysis and summarization
 -   Page-by-page document comparison
