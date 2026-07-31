@@ -22,8 +22,12 @@
       <button class="tab-btn" data-tab="chat">Doc Chat</button>
     </nav>
     <div class="model-picker">
-      <label for="model-select">Model</label>
+      <label for="model-select">LLM</label>
       <select id="model-select" aria-label="Select model"></select>
+    </div>
+    <div class="model-picker">
+      <label for="embedding-select">Embedding</label>
+      <select id="embedding-select" aria-label="Select embedding model"></select>
     </div>
   </header>
 
@@ -156,13 +160,14 @@
 
   <footer class="app-footer">
     <div>© Document Intelligence Workspace</div>
-    <div class="tiny">Frontend only – hook to your FastAPI later.</div>
+    <div class="tiny"></div>
   </footer>
 
   <script>
   // Base URL for API (same origin when opened via FastAPI)
   const API_BASE = "";
   const modelSelect = document.getElementById("model-select");
+  const embeddingSelect = document.getElementById("embedding-select");
 
   async function loadModels() {
     try {
@@ -190,11 +195,42 @@
     }
   }
 
+  async function loadEmbeddings() {
+    try {
+      const res = await fetch(`${API_BASE}/embeddings`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const payload = await res.json();
+      const options = payload.embeddings || [];
+      const defaultKey = payload.default || "";
+
+      if (!options.length) {
+        embeddingSelect.innerHTML = `<option value="">Default</option>`;
+        return;
+      }
+
+      embeddingSelect.innerHTML = options
+        .map(e => `<option value="${e.key}">${e.label}</option>`)
+        .join("");
+
+      const hasDefault = options.some(e => e.key === defaultKey);
+      embeddingSelect.value = hasDefault ? defaultKey : options[0].key;
+    } catch (e) {
+      embeddingSelect.innerHTML = `<option value="">Default</option>`;
+      console.error("Failed to load embeddings", e);
+    }
+  }
+
   function getSelectedModelKey() {
     return modelSelect?.value?.trim() || "";
   }
 
+  function getSelectedEmbeddingKey() {
+    return embeddingSelect?.value?.trim() || "";
+  }
+
   loadModels();
+  loadEmbeddings();
 
   // Tab switching (unchanged)
   const tabs = document.querySelectorAll(".tab-btn");
@@ -298,6 +334,8 @@
       fd.append("chunk_size", String(chunk));
       fd.append("chunk_overlap", String(overlap));
       fd.append("k", String(k));
+      const embeddingKey = getSelectedEmbeddingKey();
+      if (embeddingKey) fd.append("embedding_key", embeddingKey);
 
       const res = await fetch(`${API_BASE}/chat/index`, { method: "POST", body: fd });
       if (!res.ok) {

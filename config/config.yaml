@@ -3,8 +3,17 @@ faiss_db:
 
 
 embedding_model:
-  provider: "google"
-  model_name: "gemini-embedding-001"
+  default: "openai"
+  options:
+    google:
+      provider: "google"
+      model_name: "gemini-embedding-001"
+    openai:
+      provider: "openai"
+      model_name: "text-embedding-3-small"
+    openai_large:
+      provider: "openai"
+      model_name: "text-embedding-3-large"
 
 retriever:
   top_k: 10

@@ -99,9 +99,11 @@ class ChatIngestor:
         faiss_base: str = "faiss_index",
         use_session_dirs: bool = True,
         session_id: Optional[str] = None,
+        embedding_key: Optional[str] = None,
     ):
         try:
             self.model_loader = ModelLoader()
+            self.embedding_key = embedding_key
             
             self.use_session = use_session_dirs
             self.session_id = session_id or generate_session_id()
@@ -151,6 +153,7 @@ class ChatIngestor:
             
             ## FAISS manager very very important class for the docchat
             fm = FaissManager(self.faiss_dir, self.model_loader)
+            fm.emb = self.model_loader.load_embeddings(embedding_key=self.embedding_key)
             
             texts = [c.page_content for c in chunks]
             metas = [c.metadata for c in chunks]

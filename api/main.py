@@ -62,6 +62,15 @@ def get_models() -> Dict[str, Any]:
         log.exception("Failed to fetch model list")
         raise HTTPException(status_code=500, detail=f"Unable to fetch models: {e}")
 
+@app.get("/embeddings")
+def get_embeddings() -> Dict[str, Any]:
+    try:
+        loader = ModelLoader()
+        return loader.list_available_embeddings()
+    except Exception as e:
+        log.exception("Failed to fetch embedding list")
+        raise HTTPException(status_code=500, detail=f"Unable to fetch embeddings: {e}")
+
 # ---------- ANALYZE ----------
 @app.post("/analyze")
 async def analyze_document(
@@ -117,6 +126,7 @@ async def chat_build_index(
     chunk_size: int = Form(1000),
     chunk_overlap: int = Form(200),
     k: int = Form(5),
+    embedding_key: Optional[str] = Form(None),
 ) -> Any:
     try:
         log.info(f"Indexing chat session. Session ID: {session_id}, Files: {[f.filename for f in files]}")
@@ -128,6 +138,7 @@ async def chat_build_index(
             faiss_base=FAISS_BASE,
             use_session_dirs=use_session_dirs,
             session_id=session_id or None,
+            embedding_key=embedding_key,
         )
         # NOTE: ensure your ChatIngestor saves with index_name="index" or FAISS_INDEX_NAME
         # e.g., if it calls FAISS.save_local(dir, index_name=FAISS_INDEX_NAME)
