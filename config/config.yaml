@@ -9,7 +9,7 @@ upload:
 # All values can also be overridden via environment variables.
 restrictions:
   # Max LLM requests per IP per minute (0 = unlimited)
-  rate_limit_per_minute: 2
+  rate_limit_per_minute: 5
 
   # Max total LLM requests accepted per calendar day across ALL users.
   # Resets automatically at midnight. (0 = unlimited)
