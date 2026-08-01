@@ -1,6 +1,20 @@
 faiss_db:
   collection_name: "document-intelligence-workspace"
 
+# Maximum allowed file size for all uploads (in bytes). Default: 1 MB.
+upload:
+  max_file_size_bytes: 1048576
+
+# Usage restrictions to protect personal API keys during POC / demo usage.
+# All values can also be overridden via environment variables.
+restrictions:
+  # Max LLM requests per IP per minute (0 = unlimited)
+  rate_limit_per_minute: 2
+
+  # Max total LLM requests accepted per calendar day across ALL users.
+  # Resets automatically at midnight. (0 = unlimited)
+  daily_request_cap: 10
+
 
 embedding_model:
   default: "openai"

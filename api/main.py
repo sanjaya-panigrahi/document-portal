@@ -1,4 +1,8 @@
 import os
+import time
+import threading
+from collections import defaultdict
+from datetime import date
 from typing import List, Optional, Any, Dict
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -17,6 +21,7 @@ from src.document_compare.document_comparator import DocumentComparatorLLM
 from src.document_chat.retrieval import ConversationalRAG
 from utils.document_ops import FastAPIFileAdapter,read_pdf_via_handler
 from utils.model_loader import ModelLoader
+from utils.config_loader import load_config
 from logger import GLOBAL_LOGGER as log
 
 # ---------------------------------------------------------------------------
@@ -26,6 +31,79 @@ from logger import GLOBAL_LOGGER as log
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")   # root folder for all FAISS vector indexes
 UPLOAD_BASE = os.getenv("UPLOAD_BASE", "data")         # root folder where uploaded files are saved
 FAISS_INDEX_NAME = os.getenv("FAISS_INDEX_NAME", "index")  # must match the name used in FAISS.save_local()
+
+_cfg = load_config()
+MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", _cfg.get("upload", {}).get("max_file_size_bytes", 1048576)))  # default 1 MB
+
+# ---------------------------------------------------------------------------
+# POC usage restrictions — protects personal API keys from abuse
+# ---------------------------------------------------------------------------
+_r = _cfg.get("restrictions", {})
+
+# Per-IP rate limit: max LLM requests per IP per minute.
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", _r.get("rate_limit_per_minute", 10)))
+
+# Daily request cap: max total LLM calls across all users per calendar day.
+DAILY_CAP = int(os.getenv("DAILY_REQUEST_CAP", _r.get("daily_request_cap", 100)))
+
+# In-memory state (resets on server restart; sufficient for a POC)
+_lock = threading.Lock()
+_ip_timestamps: dict = defaultdict(list)   # ip -> [epoch_seconds, ...]
+_daily: dict = {"date": str(date.today()), "count": 0}
+
+
+def _enforce_restrictions(request: Request) -> None:
+    """
+    Applies two access controls to every LLM-backed endpoint:
+      1. Rate limit  — max RATE_LIMIT requests per IP per 60-second window.
+      2. Daily cap   — max DAILY_CAP total requests across all users today.
+    Raises HTTP 429 / 503 on violation.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+
+    with _lock:
+        # -- 1. Per-IP rate limit (sliding 60-second window) --
+        if RATE_LIMIT > 0:
+            window = [t for t in _ip_timestamps[client_ip] if now - t < 60]
+            if len(window) >= RATE_LIMIT:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Rate limit exceeded. Max {RATE_LIMIT} requests per minute per IP.",
+                )
+            window.append(now)
+            _ip_timestamps[client_ip] = window
+
+        # -- 2. Daily cap (resets at midnight) --
+        if DAILY_CAP > 0:
+            today = str(date.today())
+            if _daily["date"] != today:
+                _daily["date"] = today
+                _daily["count"] = 0
+            if _daily["count"] >= DAILY_CAP:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Daily request limit of {DAILY_CAP} reached. Try again tomorrow.",
+                )
+            _daily["count"] += 1
+
+    log.info("Request allowed", ip=client_ip, daily_used=_daily["count"], daily_cap=DAILY_CAP)
+
+
+def _check_file_size(file: UploadFile, label: str = "file") -> None:
+    """
+    Raises HTTP 413 if the uploaded file exceeds MAX_FILE_SIZE bytes.
+    Call this at the start of every upload endpoint before processing.
+    """
+    file.file.seek(0, 2)          # seek to end
+    size = file.file.tell()       # get byte position = file size
+    file.file.seek(0)             # rewind for downstream readers
+    if size > MAX_FILE_SIZE:
+        mb = MAX_FILE_SIZE / 1_048_576
+        raise HTTPException(
+            status_code=413,
+            detail=f"{label} exceeds the {mb:.0f} MB limit ({size:,} bytes uploaded).",
+        )
 
 # ---------------------------------------------------------------------------
 # FastAPI application setup
@@ -137,6 +215,7 @@ def get_embeddings() -> Dict[str, Any]:
 
 @app.post("/analyze")
 async def analyze_document(
+    request: Request,
     file: UploadFile = File(...),
     model_key: Optional[str] = Form(None),
 ) -> Any:
@@ -154,6 +233,8 @@ async def analyze_document(
     """
     try:
         log.info(f"Received file for analysis: {file.filename}")
+        _enforce_restrictions(request)
+        _check_file_size(file, file.filename or "file")
         dh = DocHandler()
         saved_path = dh.save_pdf(FastAPIFileAdapter(file))
         text = read_pdf_via_handler(dh, saved_path)
@@ -174,6 +255,7 @@ async def analyze_document(
 
 @app.post("/compare")
 async def compare_documents(
+    request: Request,
     reference: UploadFile = File(...),
     actual: UploadFile = File(...),
     model_key: Optional[str] = Form(None),
@@ -196,6 +278,9 @@ async def compare_documents(
     """
     try:
         log.info(f"Comparing files: {reference.filename} vs {actual.filename}")
+        _enforce_restrictions(request)
+        _check_file_size(reference, reference.filename or "reference")
+        _check_file_size(actual, actual.filename or "actual")
         dc = DocumentComparator()
         ref_path, act_path = dc.save_uploaded_files(
             FastAPIFileAdapter(reference), FastAPIFileAdapter(actual)
@@ -219,6 +304,7 @@ async def compare_documents(
 
 @app.post("/chat/index")
 async def chat_build_index(
+    request: Request,
     files: List[UploadFile] = File(...),
     session_id: Optional[str] = Form(None),
     use_session_dirs: bool = Form(True),
@@ -250,6 +336,9 @@ async def chat_build_index(
     """
     try:
         log.info(f"Indexing chat session. Session ID: {session_id}, Files: {[f.filename for f in files]}")
+        _enforce_restrictions(request)
+        for f in files:
+            _check_file_size(f, f.filename or "file")
         wrapped = [FastAPIFileAdapter(f) for f in files]
         ci = ChatIngestor(
             temp_base=UPLOAD_BASE,
@@ -276,6 +365,7 @@ async def chat_build_index(
 
 @app.post("/chat/query")
 async def chat_query(
+    request: Request,
     question: str = Form(...),
     session_id: Optional[str] = Form(None),
     use_session_dirs: bool = Form(True),
@@ -308,6 +398,7 @@ async def chat_query(
     """
     try:
         log.info(f"Received chat query: '{question}' | session: {session_id}")
+        _enforce_restrictions(request)
         if use_session_dirs and not session_id:
             raise HTTPException(status_code=400, detail="session_id is required when use_session_dirs=True")
 

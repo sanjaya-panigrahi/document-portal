@@ -245,12 +245,21 @@
   });
 
   // ===== ANALYZE =====
+  const MAX_FILE_BYTES = 1 * 1024 * 1024; // 1 MB — must match config.yaml upload.max_file_size_bytes
+
+  function checkFileSize(file, label) {
+    if (file.size > MAX_FILE_BYTES) {
+      throw new Error(`${label} is ${(file.size / 1048576).toFixed(2)} MB — maximum allowed size is 1 MB.`);
+    }
+  }
+
   document.getElementById("btn-analyze").addEventListener("click", async () => {
     const file = document.getElementById("an-file").files[0];
     const out  = document.getElementById("an-json");
     if (!file) { out.textContent = "Please upload a PDF."; return; }
 
     try {
+      checkFileSize(file, file.name);
       out.textContent = "Running analysis…";
       const fd = new FormData();
       fd.append("file", file); // <-- must be 'file' to match FastAPI
@@ -281,6 +290,8 @@
     }
 
     try {
+      checkFileSize(ref, ref.name);
+      checkFileSize(act, act.name);
       tbody.innerHTML = `<tr><td colspan="2" class="center">Comparing…</td></tr>`;
 
       const fd = new FormData();
@@ -325,6 +336,7 @@
     if (!files.length) { meta.textContent = "Please upload at least one file."; return; }
 
     try {
+      for (const f of files) checkFileSize(f, f.name);
       meta.textContent = "Building index…";
 
       const fd = new FormData();
