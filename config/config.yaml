@@ -1,9 +1,33 @@
 faiss_db:
-  collection_name: "document_portal"
+  collection_name: "document-intelligence-workspace"
 
-embeddings_model:
-  provider: "google"
-  model_name: "gemini-embedding-001"
+# Maximum allowed file size for all uploads (in bytes). Default: 1 MB.
+upload:
+  max_file_size_bytes: 1048576
+
+# Usage restrictions to protect personal API keys during POC / demo usage.
+# All values can also be overridden via environment variables.
+restrictions:
+  # Max LLM requests per IP per minute (0 = unlimited)
+  rate_limit_per_minute: 5
+
+  # Max total LLM requests accepted per calendar day across ALL users.
+  # Resets automatically at midnight. (0 = unlimited)
+  daily_request_cap: 10
+
+
+embedding_model:
+  default: "openai"
+  options:
+    google:
+      provider: "google"
+      model_name: "gemini-embedding-001"
+    openai:
+      provider: "openai"
+      model_name: "text-embedding-3-small"
+    openai_large:
+      provider: "openai"
+      model_name: "text-embedding-3-large"
 
 retriever:
   top_k: 10
@@ -13,10 +37,22 @@ llm:
     provider: "groq"
     model_name: "groq/compound-mini"
     temperature: 0
-    max_tokens: 2048
+    max_output_tokens: 2048
 
   google:
     provider: "google"
     model_name: "gemini-3.6-flash"
     temperature: 0
-    max_tokens: 2048
+    max_output_tokens: 2048
+
+  openai:
+    provider: "openai"
+    model_name: "gpt-4o-mini"
+    temperature: 0
+    max_output_tokens: 2048
+
+  claude:
+    provider: "anthropic"
+    model_name: "claude-3-5-sonnet-latest"
+    temperature: 0
+    max_output_tokens: 2048

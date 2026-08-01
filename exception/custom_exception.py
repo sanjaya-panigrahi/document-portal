@@ -2,8 +2,37 @@ import sys
 import traceback
 from typing import Optional, cast
 
-class DocumentPortalException(Exception):
+import sys
+import traceback
+from typing import Optional, cast
+
+
+class DocumentIntelligenceError(Exception):
+    """
+    Custom exception for all errors raised inside this application.
+
+    What it does:
+        - Captures the exact file name and line number where the error occurred
+          by walking the traceback to the last frame.
+        - Stores a formatted traceback string for structured logging.
+        - Accepts three forms of error_details:
+            1. None          — captures the current sys.exc_info() context.
+            2. sys module    — calls sys.exc_info() on the passed module.
+            3. Exception obj — extracts traceback directly from the exception.
+
+    Usage:
+        try:
+            risky_call()
+        except Exception as e:
+            raise DocumentIntelligenceError("Something went wrong", e) from e
+    """
     def __init__(self, error_message, error_details: Optional[object] = None):
+        """
+        Args:
+            error_message:  Human-readable description of what failed.
+            error_details:  The original exception, sys module, or None.
+                            Used to extract the traceback and source location.
+        """
         # Normalize message
         if isinstance(error_message, BaseException):
             norm_msg = str(error_message)
@@ -42,6 +71,10 @@ class DocumentPortalException(Exception):
         super().__init__(self.__str__())
 
     def __str__(self):
+        """
+        Returns a compact, logger-friendly error message including file name,
+        line number, and the traceback if available.
+        """
         # Compact, logger-friendly message (no leading spaces)
         base = f"Error in [{self.file_name}] at line [{self.lineno}] | Message: {self.error_message}"
         if self.traceback_str:
@@ -49,18 +82,19 @@ class DocumentPortalException(Exception):
         return base
 
     def __repr__(self):
-        return f"DocumentPortalException(file={self.file_name!r}, line={self.lineno}, message={self.error_message!r})"
+        """Returns a short developer-facing representation of the error."""
+        return f"DocumentIntelligenceError(file={self.file_name!r}, line={self.lineno}, message={self.error_message!r})"
 
 
-if __name__ == "__main__":
-    # Demo-1: generic exception -> wrap
-    try:
-        a = 1 / 0
-    except Exception as e:
-        raise DocumentPortalException("Division failed", e) from e
+# if __name__ == "__main__":
+#     # Demo-1: generic exception -> wrap
+#     try:
+#         a = 1 / 0
+#     except Exception as e:
+#         raise DocumentIntelligenceError("Division failed", e) from e
 
-    # Demo-2: still supports sys (old pattern)
-    # try:
-    #     a = int("abc")
-    # except Exception as e:
-    #     raise DocumentPortalException(e, sys)
+#     # Demo-2: still supports sys (old pattern)
+#     # try:
+#     #     a = int("abc")
+#     # except Exception as e:
+#     #     raise DocumentIntelligenceError(e, sys)
